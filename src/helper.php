@@ -18,7 +18,6 @@ if (! function_exists('autoSearch')) {
         return $this;
     }
 }
-}
 
 if (! function_exists('autoOrder')) {
     function autoOrder()
