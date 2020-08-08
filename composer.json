@@ -1,0 +1,37 @@
+{
+    "name": "abdullahhafizh/laravel-datatables",
+    "description": "Laravel DataTables Package.",
+    "keywords": [
+        "laravel",
+        "datatables",
+        "server-side",
+        "jquery",
+        "ajax",
+        "powerfull",
+        "response"
+    ],
+    "type": "library",
+    "license": "mit",
+    "authors": [
+        {
+            "name": "Abdullah Hafizh",
+            "email": "hafizh@hifiez.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.5.9"
+    },
+    "suggest": {
+        "hirak/prestissimo": "Plugin for downloads packages in parallel to speed up the installation process."
+    },
+    "autoload": {
+        "psr-4": {
+            "AbdullahHafizh\\LaravelDataTables\\": "src/"
+        },
+        "files": [
+            "src/helper.php"
+        ]
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
