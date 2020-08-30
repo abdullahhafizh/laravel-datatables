@@ -4,21 +4,20 @@ namespace AbdullahHafizh\LaravelDataTables;
 
 class LaravelDataTables
 {
-	private $query;
-	private $auto_search;
-	private $auto_order;
-
     function datatables($query)
     {
-    	$this->query = $query;
+        $this->query = $query;
         $this->auto_search = false;
         $this->auto_order = false;
-    	return $this;
+        $this->model = $this->query->getModel();
+        $this->table = $this->model->getTable();
+        $this->draw = request('draw', 0);
+        return $this;
     }
 
     function autoSearch()
     {
-    	$this->auto_search = true;
+        $this->auto_search = true;
         return $this;
     }
 
@@ -30,7 +29,7 @@ class LaravelDataTables
 
     function autoFilter()
     {
-        foreach ($this->getColumns($this->query) as $key => $column) {
+        foreach ($this->getColumns() as $key => $column) {
             if(request()->filled($column)) {
                 $this->query = $this->query->where($column, request()->$column);
             }
@@ -54,7 +53,7 @@ class LaravelDataTables
     {
         !is_array($column) ? $columns[] = $column : $columns = $column;
         foreach ($columns as $key => $column) {
-            if (\Schema::hasColumn($this->query->getModel()->getTable(), $column)) {
+            if ($this->hasColumn($column)) {
                 $this->query->orderBy($column, $sort);
             }
         }
@@ -63,55 +62,102 @@ class LaravelDataTables
 
     function run()
     {
-        if ($this->auto_search) {
-            $this->autoFilter($this->query);
-        }
+        try {
+            if ($this->auto_search) {
+                $this->autoFilter($this->query);
+            }
 
-        //this script for global searching in datatables
-        if (request()->filled('search') && !empty(request()->search['value'])) {
-            $this->query->where(function($query) {
-                foreach ($this->getColumns($this->query) as $key => $value) {
-                    if ($key == 0) {
-                        $this->query = $this->query->where($value, 'like', '%'.request()->search['value'].'%');
-                    }
-                    else {
-                        $this->query = $this->query->orWhere($value, 'like', '%'.request()->search['value'].'%');
+            // check searchable for any column
+            $columns = request('columns');
+            foreach ($columns as $key => $column) {
+                $value = $column['search']['value'];
+                if (!empty($value)) {
+                    if($this->hasColumn($column['data'])) {
+                        $this->query = $this->query->where($column['data'], 'like', $value . '%');
                     }
                 }
-            });
+            }
+            // this script for global searching in datatables
+            if (request()->filled('search') && !empty(request('search')['value'])) {
+                $search = request('search')['value'];
+                $this->query->where(function($query) {
+                    foreach ($this->getColumns() as $key => $value) {
+                        if ($key == 0) {
+                            $this->query = $this->query->where($value, 'like', '%' . $search . '%');
+                        }
+                        else {
+                            $this->query = $this->query->orWhere($value, 'like', '%' . $search . '%');
+                        }
+                    }
+                });
+            }
+
+            // get total data under mid before filtered
+            $this->recordsTotal = $this->model->count();
+
+            // get total data under mid after filtered
+            $this->recordsFiltered = $this->query->count();
+
+            // offset and limit part
+            if (request('length') != -1) {
+                $this->query = $this->query->offset(request()->input('start', 0));
+                $this->query = $this->query->limit(request()->input('length', 10));
+            }
+
+            // ordering part
+            if (request()->filled('order')) {
+                $orders = request('order');
+                foreach ($orders as $key => $order) {
+                    $column = request('columns')[$order['column']]['data'];
+                    $sort = $order['dir'];
+                    if($this->hasColumn($column)) {
+                        $this->query = $this->query->orderBy($column, $sort);
+                    }
+                }
+            }
+
+            if ($this->auto_order && $this->hasColumn('created_at')) {
+                $this->query = $this->query->orderBy('created_at', 'desc');
+            }
+
+            // getting rows
+            $this->data = $this->query->get();
+
+        } catch(\Illuminate\Database\QueryException $exception) {
+            $this->error;
         }
-
-        //get total data under mid before filtered
-        $recordsTotal = $this->query->getModel()->count();
-
-        //get total data under mid after filtered
-        $recordsFiltered = $this->query->count();
-
-        //offset and limit part
-        $this->query = $this->query->offset(request()->input('start', 0));
-        $this->query = $this->query->limit(request()->input('length', 10));
-
-        //ordering part
-        if ($this->auto_order && \Schema::hasColumn($this->query->getModel()->getTable(), 'created_at'))
-        {
-            $this->query = $this->query->orderBy('created_at', 'desc');
-        }
-
-        //getting rows
-        $data = $this->query->get();
-
-        $response = [
-            'draw' => request()->draw,
-            'recordsTotal' => $recordsTotal,
-            'recordsFiltered' => $recordsFiltered,
-            'data' => $data
-        ];
-
-        return response()->json($response, 200);
+        return $this->response();
     }
 
-    function getColumns($model)
-	{
-		return \Schema::getColumnListing($model->getModel()->getTable());
-	}
+    function getColumns()
+    {
+        return \Schema::getColumnListing($this->table);
+    }
+
+    function hasColumn($column)
+    {
+        return \Schema::hasColumn($this->table, $column);
+    }
+
+    function response($error = false)
+    {
+        if (!empty($this->error)) {
+            $response = [
+                'draw' => $this->draw,
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => $this->error
+            ];
+            return response()->json($response, 200);
+        }
+
+        $response = [
+            'draw' => $this->draw,
+            'recordsTotal' => $this->recordsTotal,
+            'recordsFiltered' => $this->recordsFiltered,
+            'data' => $this->data
+        ];
+        return response()->json($response, 200);
+    }
 }

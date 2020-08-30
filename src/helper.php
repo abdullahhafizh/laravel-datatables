@@ -1,7 +1,5 @@
 <?php
 
-$var = new stdClass;
-
 if (! function_exists('datatables')) {
     function datatables($query)
     {
