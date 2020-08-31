@@ -31,7 +31,7 @@ class LaravelDataTables
     {
         foreach ($this->getColumns() as $key => $column) {
             if(request()->filled($column)) {
-                $this->query = $this->query->whereRaw($column . ' = ' . "'" . request($column) . "'");
+                $this->query = $this->query->whereRaw('CAST(' . $column . ' as CHAR)' . ' = ' . "'" . request($column) . "'");
             }
         }
 
@@ -43,7 +43,7 @@ class LaravelDataTables
         !is_array($column) ? $filters[] = $column : $filters = $column;
         foreach ($filters as $key => $filter) {
             if (!empty($filter) && request()->filled($filter)) {
-                $this->query->whereRaw($filter . ' = ' . "'" . request($filter) . "'");
+                $this->query->whereRaw('CAST(' . $filter . ' as CHAR)' . ' = ' . "'" . request($filter) . "'");
             }
         }
         return $this;
