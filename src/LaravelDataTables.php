@@ -31,7 +31,7 @@ class LaravelDataTables
     {
         foreach ($this->getColumns() as $key => $column) {
             if(request()->filled($column)) {
-                $this->query = $this->query->where($column, request()->$column);
+                $this->query = $this->query->whereRaw($column . ' = ' . "'" . request($column) . "'");
             }
         }
 
@@ -43,7 +43,7 @@ class LaravelDataTables
         !is_array($column) ? $filters[] = $column : $filters = $column;
         foreach ($filters as $key => $filter) {
             if (!empty($filter) && request()->filled($filter)) {
-                $this->query->where($filter, request()->$filter);
+                $this->query->whereRaw($filter . ' = ' . "'" . request($filter) . "'");
             }
         }
         return $this;
@@ -68,25 +68,27 @@ class LaravelDataTables
             }
 
             // check searchable for any column
-            $columns = request('columns');
-            foreach ($columns as $key => $column) {
-                $value = $column['search']['value'];
-                if (!empty($value)) {
-                    if($this->hasColumn($column['data'])) {
-                        $this->query = $this->query->where($column['data'], 'like', $value . '%');
+            if (request()->filled('columns')) {
+                $columns = request('columns');
+                foreach ($columns as $key => $column) {
+                    $value = $column['search']['value'];
+                    if (!empty($value)) {
+                        if($this->hasColumn($column['data'])) {
+                            $this->query = $this->query->whereRaw('CAST(' . $column['data'] . ' as CHAR)' . " LIKE '" . $value . "%'");
+                        }
                     }
                 }
             }
             // this script for global searching in datatables
             if (request()->filled('search') && !empty(request('search')['value'])) {
                 $search = request('search')['value'];
-                $this->query->where(function($query) {
+                $this->query->where(function($query) use($search) {
                     foreach ($this->getColumns() as $key => $value) {
                         if ($key == 0) {
-                            $this->query = $this->query->where($value, 'like', '%' . $search . '%');
+                            $this->query = $this->query->whereRaw('CAST(' . $value . ' as CHAR)' . ' LIKE ' . "'%" . $search . "%'");
                         }
                         else {
-                            $this->query = $this->query->orWhere($value, 'like', '%' . $search . '%');
+                            $this->query = $this->query->orWhereRaw('CAST(' . $value . ' as CHAR)' . ' LIKE ' . "'%" . $search . "%'");
                         }
                     }
                 });
@@ -124,7 +126,7 @@ class LaravelDataTables
             $this->data = $this->query->get();
 
         } catch(\Illuminate\Database\QueryException $exception) {
-            $this->error;
+            $this->error = $exception->errorInfo[2];
         }
         return $this->response();
     }
