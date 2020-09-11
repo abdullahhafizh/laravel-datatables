@@ -30,8 +30,8 @@ class LaravelDataTables
     function autoFilter()
     {
         foreach ($this->getColumns() as $key => $column) {
-            if(request()->filled($column)) {
-                $this->query = $this->query->whereRaw('CAST(' . $column . ' as CHAR)' . ' = ' . "'" . request($column) . "'");
+            if(!empty(request($column))) {
+                $this->query = $this->query->whereRaw($column . ' = ' . "'" . request($column) . "'");
             }
         }
 
@@ -42,8 +42,8 @@ class LaravelDataTables
     {
         !is_array($column) ? $filters[] = $column : $filters = $column;
         foreach ($filters as $key => $filter) {
-            if (!empty($filter) && request()->filled($filter)) {
-                $this->query->whereRaw('CAST(' . $filter . ' as CHAR)' . ' = ' . "'" . request($filter) . "'");
+            if (!empty($filter) && !empty(request($filter))) {
+                $this->query->whereRaw($filter . ' = ' . "'" . request($filter) . "'");
             }
         }
         return $this;
@@ -68,7 +68,7 @@ class LaravelDataTables
             }
 
             // check searchable for any column
-            if (request()->filled('columns')) {
+            if (!empty(request('columns'))) {
                 $columns = request('columns');
                 foreach ($columns as $key => $column) {
                     $value = $column['search']['value'];
@@ -80,7 +80,7 @@ class LaravelDataTables
                 }
             }
             // this script for global searching in datatables
-            if (request()->filled('search') && !empty(request('search')['value'])) {
+            if (!empty(request('search')) && !empty(request('search')['value'])) {
                 $search = request('search')['value'];
                 $this->query->where(function($query) use($search) {
                     foreach ($this->getColumns() as $key => $value) {
@@ -107,7 +107,7 @@ class LaravelDataTables
             }
 
             // ordering part
-            if (request()->filled('order')) {
+            if (!empty(request('order'))) {
                 $orders = request('order');
                 foreach ($orders as $key => $order) {
                     $column = request('columns')[$order['column']]['data'];
